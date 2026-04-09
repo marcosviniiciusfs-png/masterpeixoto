@@ -42,7 +42,7 @@ const Footer = () => {
                 <Phone className="w-5 h-5 mt-1 flex-shrink-0" />
                 <div>
                   <p className="font-semibold">WhatsApp</p>
-                  <p className="text-white/90">(85) 98972-6961</p>
+                  <p className="text-white/90">(41) 99874-6589</p>
                 </div>
               </div>
             </div>
@@ -56,8 +56,8 @@ const Footer = () => {
                 <MapPin className="w-5 h-5 mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-white/90">
-                    Rua Sátiro Dias, 387 – Montese<br />
-                    Fortaleza-CE
+                    Curitiba - Paraná, Rua Marechal Deodoro 869, bairro Centro<br />
+                    CEP: 80010-010
                   </p>
                 </div>
               </div>
