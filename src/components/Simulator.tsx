@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import InputMask from "react-input-mask";
+import { sendToWebhook } from "@/services/webhook";
 import {
   Select,
   SelectContent,
@@ -100,10 +101,10 @@ const Simulator = () => {
     setIsSubmitting(true);
 
     const webhookUrl = "https://hook.us1.make.com/m60b3l3wcknirc4fc7ezy3553yso5jih";
-    
+
     const today = new Date().toISOString().split('T')[0];
     const downPaymentValue = formData.hasDownPayment === "Sim" ? formData.downPaymentAmount : "Não tem";
-    
+
     const webhookData = {
       "Data de Entrada": today,
       "Nome Completo": formData.fullName.trim(),
@@ -115,7 +116,6 @@ const Simulator = () => {
       "Cidade": formData.city.trim()
     };
 
-    // Prepare Kommo data
     const kommoData = {
       fullName: formData.fullName.trim(),
       whatsapp: formData.whatsapp,
@@ -126,11 +126,21 @@ const Simulator = () => {
       city: formData.city.trim(),
     };
 
+    const externalWebhookData = {
+      fullName: formData.fullName.trim(),
+      whatsapp: formData.whatsapp,
+      creditAmount: formData.creditAmount,
+      downPaymentAmount: downPaymentValue,
+      monthlyPayment: formData.monthlyPayment,
+      city: formData.city.trim(),
+      acquisitionTime: formData.acquisitionTime,
+      propertyType: formData.propertyType,
+    };
+
     try {
-      console.log("Enviando dados para webhook e Kommo:", webhookData);
-      
-      // Send to Make and Kommo in parallel
-      const [makeResult, kommoResult] = await Promise.allSettled([
+      console.log("Enviando dados para webhooks e Kommo:", webhookData);
+
+      const [makeResult, kommoResult, webhookResult] = await Promise.allSettled([
         fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -139,29 +149,40 @@ const Simulator = () => {
         supabase.functions.invoke('send-to-kommo', {
           body: kommoData,
         }),
+        sendToWebhook(externalWebhookData),
       ]);
 
-      // Process Kommo result and store proof
+      // Process Kommo result
       let kommoSuccess = false;
       if (kommoResult.status === 'fulfilled') {
-        const { data: kommoData, error: kommoError } = kommoResult.value;
+        const { data: kommoResponse, error: kommoError } = kommoResult.value;
         if (kommoError) {
           console.error("Erro ao enviar para Kommo:", kommoError);
-        } else if (kommoData?.success) {
+        } else if (kommoResponse?.success) {
           kommoSuccess = true;
-          console.log("Kommo OK:", kommoData);
-          // Store proof in sessionStorage
+          console.log("Kommo OK:", kommoResponse);
           try {
             sessionStorage.setItem('kommo_proof', JSON.stringify({
-              leadId: kommoData.leadId,
-              traceId: kommoData.traceId,
-              leadUrl: kommoData.leadUrl,
-              verified: kommoData.verified,
+              leadId: kommoResponse.leadId,
+              traceId: kommoResponse.traceId,
+              leadUrl: kommoResponse.leadUrl,
+              verified: kommoResponse.verified,
             }));
           } catch (e) { /* ignore */ }
         }
       } else {
         console.error("Erro ao enviar para Kommo:", kommoResult.reason);
+      }
+
+      // Process external webhook result
+      if (webhookResult.status === 'fulfilled') {
+        if (!webhookResult.value.success) {
+          console.error("Erro no webhook externo:", webhookResult.value.error);
+        } else {
+          console.log("Webhook externo OK");
+        }
+      } else {
+        console.error("Erro no webhook externo:", webhookResult.reason);
       }
 
       // Check if Make was successful
