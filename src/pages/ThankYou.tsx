@@ -22,6 +22,11 @@ const ThankYou = () => {
         setProof(JSON.parse(stored));
       }
     } catch { /* ignore */ }
+
+    // Meta Pixel
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "PageView");
+    }
   }, []);
 
   return (
